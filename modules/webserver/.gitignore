@@ -1,0 +1,6 @@
+.terraform/
+.terraform/providers/registry.terraform.io/hashicorp/aws/4.61.0/linux_amd64/terraform-provider-aws_v4.61.
+.terraform/*
+*./terraform/*
+
+
