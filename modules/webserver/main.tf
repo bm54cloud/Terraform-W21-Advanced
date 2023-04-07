@@ -1,9 +1,9 @@
 #Create a custom VPC
 resource "aws_vpc" "vpc-tf" {
-  cidr_block           = "10.0.0.0/16"
-  instance_tenancy     = "default"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  cidr_block           = var.vpc-cidr
+  instance_tenancy     = var.tenancy
+  enable_dns_hostnames = var.true
+  enable_dns_support   = var.true
 
   tags = {
     Name = "terraform-vpc"
@@ -12,6 +12,10 @@ resource "aws_vpc" "vpc-tf" {
 
 #Obtain available availability zones
 data "aws_availability_zones" "available-azs" {
+  state = "available"
+}
+
+data "aws_subnet" "public-subnets-tf" {
   state = "available"
 }
 
@@ -40,99 +44,5 @@ resource "aws_subnet" "private-subnets-tf" {
   tags = {
     Name = "tf-subnet-private-${each.key}"
     Tier = "private"
-  }
-}
-
-resource "aws_route_table" "public-rtb" {
-  vpc_id = aws_vpc.vpc-tf.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.internet-gateway.id
-  }
-
-  tags = {
-    Name = "terraform_public_rtb"
-    Tier = "public"
-  }
-}
-
-
-#Create route table for private subnets 
-resource "aws_route_table" "private-rtb" {
-  vpc_id = aws_vpc.vpc-tf.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat-gateway.id
-  }
-  tags = {
-    Name = "terraform-private-rtb"
-    Tier = "private"
-  }
-}
-
-data "aws_subnets" "public" {
-  filter {
-    name   = "vpc-id"
-    values = ["aws_vpc.vpc-tf.id"]
-  }
-
-  tags = {
-    Tier = "public"
-  }
-}
-
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = ["aws_vpc.vpc-tf.id"]
-  }
-
-  tags = {
-    Tier = "private"
-  }
-}
-
-#Create public route table associations
-resource "aws_route_table_association" "public" {
-  depends_on     = [aws_subnet.public-subnets-tf]
-  route_table_id = aws_route_table.public-rtb.id
-  for_each       = aws_subnet.public-subnets-tf
-  subnet_id      = each.value.id
-}
-
-#Create private route table associations
-resource "aws_route_table_association" "private" {
-  depends_on     = [aws_subnet.private-subnets-tf]
-  route_table_id = aws_route_table.private-rtb.id
-  for_each       = aws_subnet.private-subnets-tf
-  subnet_id      = each.value.id
-}
-
-#Create Internet Gateway
-resource "aws_internet_gateway" "internet-gateway" {
-  vpc_id = aws_vpc.vpc-tf.id
-  tags = {
-    Name = "terraform-igw"
-  }
-}
-
-#Create EIP for NAT Gateway
-resource "aws_eip" "nat-gateway-eip" {
-  vpc        = true
-  depends_on = [aws_internet_gateway.internet-gateway]
-  tags = {
-    Name = "terraform-nat-gw-eip"
-  }
-}
-
-#Create NAT Gateway
-resource "aws_nat_gateway" "nat-gateway" {
-  depends_on    = [aws_subnet.public-subnets-tf]
-  allocation_id = aws_eip.nat-gateway-eip.id
-  subnet_id     = aws_subnet.public-subnets-tf["public-subnet-1"].id
-  tags = {
-    Name = "terraform-nat-gw"
   }
 }
